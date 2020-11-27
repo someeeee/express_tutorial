@@ -5,7 +5,7 @@ import createError from 'http-errors'
 import express from 'express'
 import cookieParser from 'cookie-parser'
 import logger from 'morgan'
-import indexRouter from './routes/index'
+import v1Route from './routes/v1'
 
 const app = express()
 
@@ -13,7 +13,8 @@ app.use(logger('dev'))
 app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
 app.use(cookieParser())
-app.use('/', indexRouter)
+
+app.use('/v1', v1Route)
 
 // catch 404 and forward to error handler
 app.use((req, res, next) => {
@@ -21,11 +22,20 @@ app.use((req, res, next) => {
 })
 
 // error handler
-app.use(function(err, req, res, next) {
-  res.locals.message = err.message
-  res.locals.error = process.env.NODE_ENV === 'development' ? err : {}
-return res.status(err.status || 500)
-  .json(res.locals.error)
+app.use((err, req, res, next) => {
+  let apiError = err
+
+  if (!err.status) {
+    apiError = createError(err)
+  }
+
+  // set locals, only providing error in development
+  res.locals.message = apiError.message
+  res.locals.error = process.env.NODE_ENV === 'development' ? apiError : {}
+
+  // render the error page
+  return res.status(apiError.status)
+    .json({message: apiError.message})
 })
 
 // bin/www를 그대로 사용하기 위해 예외적으로 commonJs 문법 유지
